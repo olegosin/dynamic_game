@@ -1,0 +1,283 @@
+<script src="jquery.js"></script>
+<script type="text/javascript">
+var context;
+var dx = 4;
+var dy = 4;
+var y=150;
+var x=150;
+var ballRadius = 10;
+
+var paddleWidth = 10;
+var paddleHeight = 60;
+var playerPaddleY = 0;
+var playerPaddleX = 10;
+var aiPaddleX = (640-paddleWidth-playerPaddleX);
+var aiPaddleY = 0;
+var aiScore = 0;
+var playerScore = 0;
+var drawFrame = 0;
+var aiPaddleSpeed = 2.0;
+
+function draw()
+{
+	handleCollision();
+	aiPaddleMove();
+	context= myCanvas.getContext('2d');
+	context.clearRect(0,0,640,480);
+	context.beginPath();
+	context.fillStyle="#775E85";
+	context.arc(x,y,ballRadius,0,Math.PI*2,true);
+	context.closePath();
+	context.fill();
+	drawFrame++;
+	if((x-ballRadius) < 0 || (x+ballRadius) > 640)
+	{
+		dx=-dx;
+
+		// ai scored
+		if((x-ballRadius) < 0)
+		{	
+			aiScore++;
+			console.log('AI SCORED ' + aiScore);
+			var aiScoreParams = new Object();
+			aiScoreParams['p_input_name'] = 'ai_score';
+			aiScoreParams['p_value'] = aiScore;
+			callGameAPI('set_input_property', aiScoreParams);
+			
+			// if AI scored, let's update it's paddle speed
+			aiScoreParams = new Object();
+			aiScoreParams['p_out_name'] = 'ai_paddle_speed_decrease';
+			callGameAPI('get_output_property', aiScoreParams);
+			
+		}
+		else if((x+ballRadius) > 640) // player scored
+		{
+			playerScore++;
+			console.log('PLAYER SCORED ' + playerScore);
+			
+			var playerScoreParams = new Object();
+			playerScoreParams['p_input_name'] = 'player_score';
+			playerScoreParams['p_value'] = playerScore;
+			callGameAPI('set_input_property', playerScoreParams);
+			
+			// if AI scored, let's update it's paddle speed
+			aiScoreParams = new Object();
+			aiScoreParams['p_out_name'] = 'ai_paddle_speed_increase';
+			callGameAPI('get_output_property', aiScoreParams);
+
+		}
+	}
+	if((y-ballRadius) < 0 || (y+ballRadius) > 480)
+		dy = -dy;
+	
+	x+=dx;
+	y+=dy;
+	
+	// now draw a left paddle
+	context.beginPath();
+	context.rect(playerPaddleX, playerPaddleY, paddleWidth, paddleHeight);
+	context.closePath();
+	context.fillStyle = "#775E85";
+	context.stroke();
+	context.fill();
+    
+    // now draw the ai paddle
+    context.beginPath();
+	context.rect(aiPaddleX, aiPaddleY, paddleWidth, paddleHeight);
+	context.closePath();
+	context.fillStyle = "#775E85";
+	context.stroke();
+	context.fill();
+
+	
+}
+    
+function aiPaddleMove()
+{
+    if(aiPaddleY > y)
+		aiPaddleY -= aiPaddleSpeed;
+	else if((aiPaddleY+paddleHeight) < y)
+		aiPaddleY += aiPaddleSpeed;
+		
+} 
+
+function handleCollision()
+{
+	// check against players paddle
+	if((x-ballRadius) < (playerPaddleX + paddleWidth) &&
+	   ((y+ballRadius) > playerPaddleY) && ((y-ballRadius) < (playerPaddleY+paddleHeight)))
+	{
+		dx *= -1;
+		//x += dx;
+		x = playerPaddleX+ballRadius+paddleWidth;
+	}
+	
+	// check ai paddle collision
+	if((x+ballRadius) > aiPaddleX &&
+	   ((y+ballRadius) > aiPaddleY) && ((y-ballRadius) < (aiPaddleY+paddleHeight)))
+	{
+		dx *= -1;
+		//x += dx;
+		x = aiPaddleX-ballRadius;
+	}
+
+}
+
+function handleInput(event)
+{
+	switch(event.keyIdentifier)
+	{
+	case "Up":
+	{
+		if((playerPaddleY - 15) >= 0)
+			playerPaddleY -= 15;
+	}
+	break;
+	case "Down":
+	{
+		if((playerPaddleY + 15 + paddleHeight) <= 480)
+			playerPaddleY += 15;
+	}
+	break;
+	default:
+		break;
+	}
+		
+}
+
+function gameAPICallBack_err(data)
+{
+	console.log('error');
+	console.log(data);
+}	
+
+function gameAPICallBack(data)
+{
+	console.log(data);
+	if(data == 'success')
+		return;
+	
+	// TODO: refactor the way params are returned from server.
+	var output_name;
+	var value;
+	var iter = 0;
+	$.each(data, function(i) 
+			{	
+		if(i == "output_property") // should always be the output property name
+		{
+			output_name = data[i];
+		}
+		else if(i == "value") // should be the value
+			value = data[i];
+		
+		console.log(data[i]); 
+	});
+
+	if(output_name == "ai_paddle_speed_decrease")
+	{
+		aiPaddleSpeed -= value;
+		if(aiPaddleSpeed < 1)
+			aiPaddleSpeed = 1;
+	}
+	else if(output_name == "ai_paddle_speed_increase")
+	{
+		aiPaddleSpeed += value;
+
+	}
+}
+
+function callGameAPI(functionName, params) 
+{
+	// make request to the server
+	var baseURL = 'exp.php?';
+	baseURL += ('game_api=' + functionName);
+	
+	/*for(i in params)
+	{
+		baseURL += ('&' + i + '=' + params[i]);
+	}*/
+	
+	$.ajax({
+    url: baseURL,
+    dataType: 'json',
+    data: params,
+    success: gameAPICallBack,
+    error: gameAPICallBack_err
+	});
+}
+function initGame()
+{
+	//http://www.berzerked.com/dynamic_game/dynamic_pong/exp.php?game_api=get_output_property&p_out_name=out
+	/*var params = new Object();
+	params['p_out_name'] = 'out';
+	callGameAPI('get_output_property', params);
+	
+	var aiScoreParams = new Object();
+	params['p_input_name'] = 'dd';
+	params['p_value'] = 0.2;
+	callGameAPI('set_input_property', aiScoreParams);*/
+	
+	// create an input property for the ai score
+	var aiScoreParams = new Object();
+	aiScoreParams['p_input_property'] = 'ai_score';
+	aiScoreParams['p_output_property'] = 'ai_paddle_speed_decrease';
+	aiScoreParams['p_weight'] = 0.05;
+	aiScoreParams['p_value'] = 0;
+	callGameAPI('create_input_property', aiScoreParams);
+	
+	// set the paddle speed decrease to 0 every time the game starts
+	var aiScoreParams = new Object();
+	aiScoreParams['p_input_name'] = 'ai_score';
+	aiScoreParams['p_value'] = 0;
+	callGameAPI('set_input_property', aiScoreParams);
+
+	// create an input property for the player score
+	var playerScoreParams = new Object();
+	playerScoreParams['p_input_property'] = 'player_score';
+	playerScoreParams['p_output_property'] = 'ai_paddle_speed_increase';
+	playerScoreParams['p_weight'] = 0.05;
+	playerScoreParams['p_value'] = 0;
+	callGameAPI('create_input_property', playerScoreParams);
+	
+	// set the player score 0 every time the game starts
+	var playerScoreParams = new Object();
+	playerScoreParams['p_input_name'] = 'player_score';
+	playerScoreParams['p_value'] = 0;
+	callGameAPI('set_input_property', playerScoreParams);
+
+}
+
+
+if (window.addEventListener)
+	window.addEventListener("load", initGame, false)
+else if (window.attachEvent)
+	window.attachEvent("onload", initGame)
+				
+document.onkeydown = handleInput;
+setInterval(draw,30); 
+</script>
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>HTML5 Bouncing Ball</title>
+<style type="text/css">
+
+body { background-color:#C7BFC9; font:normal 12px/18px Arial, Helvetica, sans-serif; }
+h1 { display:block; width:600px; margin:20px auto; padding-bottom:20px; font:normal 24px/30px Helvetica; color:#333; text-shadow: 1px 2px 3px #A8A8A8; border-bottom:0px solid #cbcbcb; }
+#container { width:600px; margin:0 auto; }
+#myCanvas { background:#fff; border:1px solid #cbcbcb; }
+#nav { display:block; width:100%; text-align:center; }
+#nav li { display:block; font-weight:bold; line-height:21px; text-shadow:1px 1px 1px #fff; width:100px; height:21px; padding:5px; margin:0 10px; background:#e0e0e0; border:1px solid #ccc; -moz-border-radius:4px;-webkit-border-radius:4px; border-radius:4px; float:left; }
+#nav li a { color:#000; display:block; text-decoration:none; width:100%; height:100%; }
+
+</style>
+</head>
+<body>
+<h1>Dynamic Pong | Use Arrow Keys</h1>
+<div id="container">
+	<canvas id="myCanvas" width="640" height="480"></canvas>
+</div>
+
+</body>
+</html>
