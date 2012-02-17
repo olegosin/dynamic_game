@@ -171,6 +171,7 @@ function gameAPICallBack(data)
 			value = data[i];
 		
 		console.log(data[i]); 
+
 	});
 
 	if(output_name == "ai_paddle_speed_decrease")
@@ -184,6 +185,8 @@ function gameAPICallBack(data)
 		aiPaddleSpeed += value;
 
 	}
+	var gameInfo = document.getElementById('gameInfo');
+	gameInfo.innerHTML = "AI Paddle Speed: " + aiPaddleSpeed;
 }
 
 function callGameAPI(functionName, params) 
@@ -221,7 +224,7 @@ function initGame()
 	var aiScoreParams = new Object();
 	aiScoreParams['p_input_property'] = 'ai_score';
 	aiScoreParams['p_output_property'] = 'ai_paddle_speed_decrease';
-	aiScoreParams['p_weight'] = 0.05;
+	aiScoreParams['p_weight'] = 0.8;
 	aiScoreParams['p_value'] = 0;
 	callGameAPI('create_input_property', aiScoreParams);
 	
@@ -235,7 +238,7 @@ function initGame()
 	var playerScoreParams = new Object();
 	playerScoreParams['p_input_property'] = 'player_score';
 	playerScoreParams['p_output_property'] = 'ai_paddle_speed_increase';
-	playerScoreParams['p_weight'] = 0.05;
+	playerScoreParams['p_weight'] = 0.15;
 	playerScoreParams['p_value'] = 0;
 	callGameAPI('create_input_property', playerScoreParams);
 	
@@ -270,7 +273,7 @@ h1 { display:block; width:600px; margin:20px auto; padding-bottom:20px; font:nor
 #nav { display:block; width:100%; text-align:center; }
 #nav li { display:block; font-weight:bold; line-height:21px; text-shadow:1px 1px 1px #fff; width:100px; height:21px; padding:5px; margin:0 10px; background:#e0e0e0; border:1px solid #ccc; -moz-border-radius:4px;-webkit-border-radius:4px; border-radius:4px; float:left; }
 #nav li a { color:#000; display:block; text-decoration:none; width:100%; height:100%; }
-
+#gameInfo { font:normal 10px/12px Arial, Helvetica, sans-serif; background:#cccfff; text-align:center;}
 </style>
 </head>
 <body>
@@ -278,6 +281,9 @@ h1 { display:block; width:600px; margin:20px auto; padding-bottom:20px; font:nor
 <div id="container">
 	<canvas id="myCanvas" width="640" height="480"></canvas>
 </div>
-
+<p></p>
+<div id="gameInfo">
+	ai paddle speed info goes here
+</div>
 </body>
 </html>
