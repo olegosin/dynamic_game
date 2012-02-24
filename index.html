@@ -219,6 +219,19 @@ function initGame()
 	params['p_input_name'] = 'dd';
 	params['p_value'] = 0.2;
 	callGameAPI('set_input_property', aiScoreParams);*/
+
+	// load up xml with attributes..
+	var xmlDoc;
+	if(window.XMLHttpRequest)
+	{
+	    xmlhttp = new XMLHttpRequest();
+	    xmlhttp.open("GET", "game_attributes.xml", false);
+	    xmlhttp.send();
+	    xmlDoc = xmlhttp.responseXML;
+	    var testXML = xmlDoc.getElementsByTagName("attr")[0].childNodes[0].nodeValue;
+	    console.log(testXML);
+	}
+	
 	
 	// create an input property for the ai score
 	var aiScoreParams = new Object();
